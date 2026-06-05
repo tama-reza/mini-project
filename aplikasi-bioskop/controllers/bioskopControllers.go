@@ -29,18 +29,22 @@ func ConnectDB() {
 		fmt.Println("Peringatan: File .env tidak ditemukan, menggunakan nilai default.")
 	}
 
-	// Ambil data konfigurasi dari file .env
-	host := getEnv("PGHOST", "postgres.railway.internal")
-	user := getEnv("PGUSER", "postgres")
-	password := getEnv("PGPASSWORD", "")
-	dbname := getEnv("PGDATABASE", "railway")
+	psqlInfo := os.Getenv("DATABASE_URL")
 
-	// Konversi teks port di .env menjadi angka integer untuk fmt.Sprintf
-	portStr := getEnv("PGPORT", "5432")
-	port, _ := strconv.Atoi(portStr)
+	if psqlInfo == "" {
+		// Ambil data konfigurasi dari file .env
+		host := getEnv("PGHOST", "postgres.railway.internal")
+		user := getEnv("PGUSER", "postgres")
+		password := getEnv("PGPASSWORD", "")
+		dbname := getEnv("PGDATABASE", "railway")
 
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
+		// Konversi teks port di .env menjadi angka integer untuk fmt.Sprintf
+		portStr := getEnv("PGPORT", "5432")
+		port, _ := strconv.Atoi(portStr)
+
+		psqlInfo = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+			host, port, user, password, dbname)
+	}
 
 	// 1. Open Database Connection
 	db, err = sql.Open("postgres", psqlInfo) // mengembalikan 2 return, db dan err
@@ -56,6 +60,20 @@ func ConnectDB() {
 
 	fmt.Println("Succesfully connected to database")
 
+	// Membuat tabel otomatis jika belum ada di database Railway
+	createTableSQL := `
+	CREATE TABLE IF NOT EXISTS bioskop (
+		id SERIAL PRIMARY KEY,
+		nama VARCHAR(255) NOT NULL,
+		lokasi TEXT NOT NULL,
+		rating NUMERIC(3,2) NOT NULL
+	);`
+
+	_, err = db.Exec(createTableSQL)
+	if err != nil {
+		panic(fmt.Sprintf("Gagal membuat tabel otomatis: %v", err))
+	}
+	fmt.Println("Tabel 'bioskop' siap digunakan atau sudah ada.")
 }
 
 func getEnv(key, fallback string) string {
