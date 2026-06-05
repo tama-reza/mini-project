@@ -30,13 +30,13 @@ func ConnectDB() {
 	}
 
 	// Ambil data konfigurasi dari file .env
-	host := getEnv("DB_HOST", "localhost")
-	user := getEnv("DB_USER", "postgres")
-	password := getEnv("DB_PASSWORD", "")
-	dbname := getEnv("DB_NAME", "")
+	host := getEnv("PGHOST", "postgres.railway.internal")
+	user := getEnv("PGUSER", "postgres")
+	password := getEnv("PGPASSWORD", "")
+	dbname := getEnv("PGDATABASE", "railway")
 
 	// Konversi teks port di .env menjadi angka integer untuk fmt.Sprintf
-	portStr := getEnv("DB_PORT", "5432")
+	portStr := getEnv("PGPORT", "5432")
 	port, _ := strconv.Atoi(portStr)
 
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
@@ -69,7 +69,7 @@ func CreateBioskop(ctx *gin.Context) {
 	var newBioskop Bioskop
 
 	if err := ctx.ShouldBindJSON(&newBioskop); err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -93,14 +93,22 @@ func UpdateBioskop(ctx *gin.Context) {
 	id := ctx.Param("id") // Mengambil ID dari URL, misal: /bioskop/1
 	var updateData Bioskop
 
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID harus berupa angka yang valid"})
+		return
+	}
+
 	if err := ctx.ShouldBindJSON(&updateData); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	updateData.ID = idInt
+
 	sqlStatement := `UPDATE bioskop SET nama = $1, lokasi = $2, rating = $3 WHERE id = $4`
 
-	res, err := db.Exec(sqlStatement, updateData.Nama, updateData.Lokasi, updateData.Rating, id)
+	res, err := db.Exec(sqlStatement, updateData.Nama, updateData.Lokasi, updateData.Rating, idInt)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui data"})
 		return
@@ -149,9 +157,16 @@ func GetBioskop(ctx *gin.Context) {
 func DeleteBioskop(ctx *gin.Context) {
 	id := ctx.Param("id")
 
+	// Tambahkan validasi angka di sini
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID harus berupa angka yang valid"})
+		return
+	}
+
 	sqlStatement := `DELETE FROM bioskop WHERE id = $1`
 
-	res, err := db.Exec(sqlStatement, id)
+	res, err := db.Exec(sqlStatement, idInt)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus data"})
 		return
@@ -164,6 +179,6 @@ func DeleteBioskop(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"message": fmt.Sprintf("Bioskop dengan ID %s berhasil dihapus", id),
+		"message": fmt.Sprintf("Bioskop dengan ID %d berhasil dihapus", idInt),
 	})
 }
