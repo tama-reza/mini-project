@@ -35,7 +35,7 @@ func ConnectDB() {
 		// Ambil data konfigurasi dari file .env
 		host := getEnv("PGHOST", "postgres.railway.internal")
 		user := getEnv("PGUSER", "postgres")
-		password := getEnv("PGPASSWORD", "")
+		password := getEnv("PGPASSWORD", "DghStKTntTqzhqfosrgbVxaWPvGfkySb")
 		dbname := getEnv("PGDATABASE", "railway")
 
 		// Konversi teks port di .env menjadi angka integer untuk fmt.Sprintf
